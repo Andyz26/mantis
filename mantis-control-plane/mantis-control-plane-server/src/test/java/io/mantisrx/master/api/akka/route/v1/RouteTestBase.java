@@ -29,7 +29,7 @@ import akka.http.javadsl.model.HttpRequest;
 import akka.http.javadsl.model.HttpResponse;
 import akka.http.javadsl.model.RequestEntity;
 import akka.http.javadsl.model.StatusCode;
-import akka.stream.ActorMaterializer;
+import akka.stream.Materializer;
 import akka.util.ByteString;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
@@ -44,7 +44,7 @@ abstract class RouteTestBase {
     private final static Logger logger = LoggerFactory.getLogger(RouteTestBase.class);
 
     final ActorSystem system;
-    final ActorMaterializer materializer;
+    final Materializer materializer;
     final Http http;
     final private int serverPort;
 
@@ -55,7 +55,7 @@ abstract class RouteTestBase {
 
     RouteTestBase(String testName, int port) {
         this.system = ActorSystem.create(testName);
-        this.materializer = ActorMaterializer.create(system);
+        this.materializer = Materializer.createMaterializer(system);
         this.http = Http.get(system);
         this.serverPort = port;
     }

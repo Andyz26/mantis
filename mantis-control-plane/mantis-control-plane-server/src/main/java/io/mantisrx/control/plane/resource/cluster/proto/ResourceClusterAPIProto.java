@@ -63,20 +63,4 @@ public class ResourceClusterAPIProto {
             this.clusterSpec = clusterSpec;
         }
     }
-
-    // /**
-    //  * Response contract for {@IResourceClusterProvider} provision request.
-    //  */
-    // @Value
-    // public class ResourceClusterProvisionResponse extends BaseResponse {
-    //
-    //     @Builder
-    //     public ResourceClusterProvisionResponse(
-    //             final long requestId,
-    //             final ResponseCode responseCode,
-    //             final String message,
-    //             final List<RegisteredResourceCluster> registeredResourceClusters) {
-    //         super(requestId, responseCode, message);
-    //     }
-    // }
 }

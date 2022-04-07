@@ -27,9 +27,12 @@ import akka.http.javadsl.server.PathMatcher0;
 import akka.http.javadsl.server.PathMatchers;
 import akka.http.javadsl.server.Route;
 import akka.http.javadsl.server.RouteResult;
+import io.mantisrx.control.plane.resource.cluster.proto.GetResourceClusterSpecRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ListResourceClusterRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ProvisionResourceClusterRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.GetResourceClusterResponse;
+import io.mantisrx.control.plane.resource.cluster.proto.ScaleResourceRequest;
+import io.mantisrx.control.plane.resource.cluster.proto.ScaleResourceResponse;
 import io.mantisrx.master.api.akka.route.Jackson;
 import io.mantisrx.master.api.akka.route.handlers.ResourceClusterRouteHandler;
 import io.mantisrx.master.api.akka.route.v1.HttpRequestMetrics.Endpoints;
@@ -82,33 +85,63 @@ public class ResourceClustersRoute extends BaseRoute {
                                 (clusterName) -> pathEndOrSingleSlash(() -> concat(
 
                                         // GET
-                                        get(() -> getResourceClusterInstanceRoute(clusterName)),
+                                        get(() -> getResourceClusterInstanceRoute(clusterName)))
 
                                         // PUT
-                                        put(() -> putResourceClusterInstanceRoute(clusterName)),
+                                        // put(() -> putResourceClusterInstanceRoute(clusterName)))
 
                                         // DELETE
-                                        delete(() -> deleteResourceClusterInstanceRoute(clusterName)))
+                                        // delete(() -> deleteResourceClusterInstanceRoute(clusterName)))
                                 )
+                        ),
+
+                        // api/v1/resourceClusters/{}/actions/scaleSku
+                        path(
+                                PathMatchers.segment().slash("actions").slash("scaleSku"),
+                                (clusterName) -> pathEndOrSingleSlash(() -> concat(
+
+                                        // POST
+                                        post(() -> scaleClusterSku(clusterName))
+                                ))
                         )
                 ));
     }
 
-    private Route deleteResourceClusterInstanceRoute(String clusterName) {
-        throw new UnsupportedOperationException("Delete cluster is not supported.");
+    private Route scaleClusterSku(String clusterName) {
+        return entity(Jackson.unmarshaller(ScaleResourceRequest.class), skuScaleRequest -> {
+
+            log.info("POST api/v1/resourceClusters/{}/actions/scaleSku {}", skuScaleRequest);
+            final CompletionStage<ScaleResourceResponse> response =
+                    this.resourceClusterRouteHandler.scale(skuScaleRequest);
+
+            return completeAsync(
+                    response,
+                    resp -> complete(
+                            StatusCodes.ACCEPTED,
+                            resp,
+                            Jackson.marshaller()),
+                    Endpoints.RESOURCE_CLUSTERS,
+                    HttpRequestMetrics.HttpVerb.POST
+            );
+        });
     }
 
-    private Route putResourceClusterInstanceRoute(String clusterName) {
-        return null;
-    }
-
-    private Route getResourceClusterInstanceRoute(String clusterName) {
-        return null;
+    private Route getResourceClusterInstanceRoute(String clusterId) {
+        log.trace("GET /api/v1/resourceClusters/%s called", clusterId);
+        return parameterMap(param ->
+                alwaysCache(routeResultCache, getRequestUriKeyer, () -> extractUri(
+                        uri -> completeAsync(
+                                this.resourceClusterRouteHandler.get(
+                                        GetResourceClusterSpecRequest.builder().id(clusterId).build()),
+                                resp -> completeOK(
+                                        resp,
+                                        Jackson.marshaller()),
+                                Endpoints.RESOURCE_CLUSTERS,
+                                HttpRequestMetrics.HttpVerb.GET))));
     }
 
     private Route postResourceClustersRoute() {
         return entity(Jackson.unmarshaller(ProvisionResourceClusterRequest.class), resClusterSpec -> {
-
             log.info("POST /api/v1/resourceClusters called {}", resClusterSpec);
             final CompletionStage<GetResourceClusterResponse> response =
                     this.resourceClusterRouteHandler

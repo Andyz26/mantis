@@ -16,6 +16,7 @@
 
 package io.mantisrx.master.api.akka.route.v1;
 
+import static io.mantisrx.master.api.akka.payloads.ResourceClustersPayloads.CLUSTER_ID;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
@@ -39,16 +40,21 @@ import io.mantisrx.control.plane.resource.cluster.proto.ScaleResourceRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ScaleResourceResponse;
 import io.mantisrx.control.plane.resource.cluster.resourceprovider.IResourceClusterProvider;
 import io.mantisrx.control.plane.resource.cluster.resourceprovider.IResourceClusterResponseHandler;
+import io.mantisrx.control.plane.resource.cluster.resourceprovider.NoopResourceClusterResponseHandler;
 import io.mantisrx.master.api.akka.payloads.ResourceClustersPayloads;
 import io.mantisrx.master.api.akka.route.handlers.ResourceClusterRouteHandler;
 import io.mantisrx.master.api.akka.route.handlers.ResourceClusterRouteHandlerAkkaImpl;
+import io.mantisrx.master.jobcluster.proto.BaseResponse.ResponseCode;
 import io.mantisrx.shaded.com.fasterxml.jackson.databind.JsonNode;
 import io.mantisrx.shaded.com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.testng.annotations.AfterClass;
 import org.testng.annotations.BeforeClass;
@@ -131,15 +137,77 @@ public class ResourceClustersRouteTest extends RouteTestBase {
                         ContentTypes.APPLICATION_JSON,
                         ResourceClustersPayloads.RESOURCE_CLUSTER_CREATE),
                 StatusCodes.ACCEPTED,
-                resp -> System.out.println(resp));
+                resp -> compareClusterSpecPayload(resp, node -> {
+                    assertEquals(CLUSTER_ID, node.get("name").asText());
+                    assertEquals(1, node.get("skuSpecs").size());
+                    assertEquals("dev/mantistaskexecutor:main.test",
+                            node.get("skuSpecs").get(0).get("imageId").asText());
+                }));
+    }
 
-        // assert this.isClusterExist(TEST_CLUSTER_NAME);
+    @Test(dependsOnMethods = {"testClusterCreate"})
+    public void getClustersList2() throws InterruptedException {
+        testGet(
+                getResourceClusterEndpoint(),
+                StatusCodes.OK,
+                resp -> compareClustersPayload(resp, node -> {
+                    assertEquals(1, node.size());
+                    List<String> ids = node.findValuesAsText("id").stream().collect(Collectors.toList());
+                    assertEquals(1, ids.size());
+                    assertEquals("mantisResourceClusterUT1", ids.get(0));
+                }));
+    }
+
+    @Test(dependsOnMethods = {"testClusterCreate"})
+    public void getClusterSpec() throws InterruptedException {
+        testGet(
+                getResourceClusterEndpoint(CLUSTER_ID),
+                StatusCodes.OK,
+                resp -> compareClusterSpecPayload(resp, node -> {
+                    assertEquals(CLUSTER_ID, node.get("clusterSpec").get("name").asText());
+                    assertEquals(1, node.get("clusterSpec").get("skuSpecs").size());
+                    assertEquals("dev/mantistaskexecutor:main.test",
+                            node.get("clusterSpec").get("skuSpecs").get(0).get("imageId").asText());
+                }));
+    }
+
+    @Test(dependsOnMethods = {"getClusterSpec"})
+    public void scaleClusterSpec() throws InterruptedException {
+        testPost(
+                getResourceClusterEndpoint(CLUSTER_ID) + "/actions/scaleSku",
+                HttpEntities.create(
+                        ContentTypes.APPLICATION_JSON,
+                        ResourceClustersPayloads.RESOURCE_CLUSTER_SKU_SCALE),
+                StatusCodes.ACCEPTED,
+                resp -> compareClusterSpecPayload(resp, node -> {
+                    assertEquals(CLUSTER_ID, node.get("clusterId").asText());
+                    assertEquals("small", node.get("skuId").asText());
+                    assertEquals("Prod", node.get("envType").asText());
+                    assertEquals("11", node.get("desireSize").asText());
+                }));
     }
 
     final String getResourceClusterEndpoint() {
         return String.format(
                 "http://127.0.0.1:%d/api/v1/resourceClusters",
                 SERVER_PORT);
+    }
+
+    final String getResourceClusterEndpoint(String clusterId) {
+        return String.format(
+                "http://127.0.0.1:%d/api/v1/resourceClusters/%s",
+                SERVER_PORT, clusterId);
+    }
+
+    private void compareClusterSpecPayload(String clusterSpecResponse, Consumer<JsonNode> valFunc) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode responseObj = mapper.readTree(clusterSpecResponse);
+            valFunc.accept(responseObj);
+
+        } catch (IOException ex) {
+            fail(ex.getMessage());
+        }
     }
 
     private void compareClustersPayload(String clusterListResponse, Consumer<JsonNode> valFunc) {
@@ -172,19 +240,35 @@ public class ResourceClustersRouteTest extends RouteTestBase {
         public CompletionStage<ResourceClusterProvisionSubmissiomResponse> provisionClusterIfNotPresent(
                 ProvisionResourceClusterRequest clusterSpec) {
             if (this.injectedProvider != null) return this.injectedProvider.provisionClusterIfNotPresent(clusterSpec);
-            return null;
+            return CompletableFuture.supplyAsync(() -> {
+                try {
+                    Thread.sleep(500);
+                    return ResourceClusterProvisionSubmissiomResponse.builder().response("mock resp").build();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         }
 
         @Override
         public CompletionStage<ScaleResourceResponse> scaleResource(ScaleResourceRequest scaleRequest) {
             if (this.injectedProvider != null) return this.injectedProvider.scaleResource(scaleRequest);
-            return null;
+            return CompletableFuture.completedFuture(
+                    ScaleResourceResponse.builder()
+                            .message("test scale resp")
+                            .region(scaleRequest.getRegion())
+                            .skuId(scaleRequest.getSkuId())
+                            .clusterId(scaleRequest.getClusterId())
+                            .envType(scaleRequest.getEnvType())
+                            .desireSize(scaleRequest.getDesireSize())
+                            .responseCode(ResponseCode.SUCCESS)
+                            .build());
         }
 
         @Override
         public IResourceClusterResponseHandler getResponseHandler() {
             if (this.injectedProvider != null) return this.injectedProvider.getResponseHandler();
-            return null;
+            return new NoopResourceClusterResponseHandler();
         }
     }
 }

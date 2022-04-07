@@ -19,9 +19,10 @@ package io.mantisrx.master.api.akka.route.handlers;
 import io.mantisrx.control.plane.resource.cluster.proto.GetResourceClusterSpecRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ListResourceClusterRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ProvisionResourceClusterRequest;
-import io.mantisrx.master.jobcluster.proto.JobClusterManagerProto;
 import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.GetResourceClusterResponse;
 import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.ListResourceClustersResponse;
+import io.mantisrx.control.plane.resource.cluster.proto.ScaleResourceRequest;
+import io.mantisrx.control.plane.resource.cluster.proto.ScaleResourceResponse;
 import java.util.concurrent.CompletionStage;
 
 public interface ResourceClusterRouteHandler {
@@ -31,18 +32,5 @@ public interface ResourceClusterRouteHandler {
 
     CompletionStage<GetResourceClusterResponse> get(final GetResourceClusterSpecRequest request);
 
-    //CompletionStage<>
-
-    // CompletionStage<DeleteJobClusterResponse> delete(final JobClusterManagerProto.DeleteJobClusterRequest request);
-    //
-    CompletionStage<JobClusterManagerProto.DisableJobClusterResponse> disable(final JobClusterManagerProto.DisableJobClusterRequest request);
-    //
-    // CompletionStage<JobClusterManagerProto.EnableJobClusterResponse> enable(final JobClusterManagerProto.EnableJobClusterRequest request);
-    //
-    // CompletionStage<JobClusterManagerProto.UpdateJobClusterArtifactResponse> updateArtifact(final JobClusterManagerProto.UpdateJobClusterArtifactRequest request);
-    //
-    // CompletionStage<JobClusterManagerProto.UpdateJobClusterSLAResponse> updateSLA(final JobClusterManagerProto.UpdateJobClusterSLARequest request);
-    //
-    // CompletionStage<JobClusterManagerProto.UpdateJobClusterWorkerMigrationStrategyResponse> updateWorkerMigrateStrategy(final JobClusterManagerProto.UpdateJobClusterWorkerMigrationStrategyRequest request);
-
+    CompletionStage<ScaleResourceResponse> scale(final ScaleResourceRequest request);
 }

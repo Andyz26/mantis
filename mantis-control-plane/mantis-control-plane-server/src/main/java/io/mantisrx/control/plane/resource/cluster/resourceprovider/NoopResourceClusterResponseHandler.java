@@ -14,32 +14,15 @@
  * limitations under the License.
  */
 
-package io.mantisrx.control.plane.resource.cluster.proto;
+package io.mantisrx.control.plane.resource.cluster.resourceprovider;
 
-import io.mantisrx.shaded.com.google.common.base.Joiner;
-import lombok.Builder;
-import lombok.NonNull;
-import lombok.Value;
+import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterProvisionSubmissiomResponse;
+import lombok.extern.slf4j.Slf4j;
 
-@Builder
-@Value
-public class ScaleResourceRequest {
-    @NonNull
-    String clusterId;
-
-    @NonNull
-    String skuId;
-
-    @NonNull
-    String region;
-
-    @NonNull
-    MantisResourceClusterEnvType envType;
-
-    int desireSize;
-
-    public String getScaleRequestId() {
-        return Joiner.on('-').join(this.clusterId, this.region, this.envType.name(), this.skuId, this.desireSize);
+@Slf4j
+public class NoopResourceClusterResponseHandler implements IResourceClusterResponseHandler {
+    @Override
+    public void handleProvisionResponse(ResourceClusterProvisionSubmissiomResponse resp) {
+        log.info(resp.toString());
     }
-
 }

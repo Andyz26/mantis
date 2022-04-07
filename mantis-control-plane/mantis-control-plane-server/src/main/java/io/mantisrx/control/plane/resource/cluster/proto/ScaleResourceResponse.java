@@ -16,14 +16,13 @@
 
 package io.mantisrx.control.plane.resource.cluster.proto;
 
+import io.mantisrx.master.jobcluster.proto.BaseResponse;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
 
-// @Jacksonized TODO fix Jacksonized
-@Builder
 @Value
-public class ScaleResourceResponse {
+public class ScaleResourceResponse extends BaseResponse {
     @NonNull
     String clusterId;
 
@@ -38,5 +37,21 @@ public class ScaleResourceResponse {
 
     int desireSize;
 
-    String response;
+    @Builder
+    public ScaleResourceResponse(
+            final long requestId,
+            final ResponseCode responseCode,
+            final String message,
+            final String clusterId,
+            String skuId,
+            String region,
+            MantisResourceClusterEnvType envType,
+            int desireSize) {
+        super(requestId, responseCode, message);
+        this.clusterId = clusterId;
+        this.skuId = skuId;
+        this.region = region;
+        this.envType = envType;
+        this.desireSize = desireSize;
+    }
 }

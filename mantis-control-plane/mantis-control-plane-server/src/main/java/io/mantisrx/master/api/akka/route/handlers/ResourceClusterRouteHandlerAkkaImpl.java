@@ -22,10 +22,10 @@ import akka.actor.ActorRef;
 import io.mantisrx.control.plane.resource.cluster.proto.GetResourceClusterSpecRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ListResourceClusterRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ProvisionResourceClusterRequest;
-import io.mantisrx.master.jobcluster.proto.JobClusterManagerProto.DisableJobClusterRequest;
-import io.mantisrx.master.jobcluster.proto.JobClusterManagerProto.DisableJobClusterResponse;
 import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.GetResourceClusterResponse;
 import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.ListResourceClustersResponse;
+import io.mantisrx.control.plane.resource.cluster.proto.ScaleResourceRequest;
+import io.mantisrx.control.plane.resource.cluster.proto.ScaleResourceResponse;
 import io.mantisrx.server.master.config.ConfigurationProvider;
 import java.time.Duration;
 import java.util.Optional;
@@ -49,15 +49,6 @@ public class ResourceClusterRouteHandlerAkkaImpl implements ResourceClusterRoute
         // Metrics metrics = MetricsRegistry.getInstance().registerAndGet(m);
         // allJobClustersGET = metrics.getCounter("allJobClustersGET");
     }
-
-    // @Override
-    // public CompletionStage<JobClusterManagerProto.CreateJobClusterResponse> create(
-    //         final JobClusterManagerProto.CreateJobClusterRequest request) {
-    //     CompletionStage<JobClusterManagerProto.CreateJobClusterResponse> response =
-    //             ask(this.resourceClustersManagerActor, request, timeout)
-    //             .thenApply(JobClusterManagerProto.CreateJobClusterResponse.class::cast);
-    //     return response;
-    // }
 
     @Override
     public CompletionStage<ListResourceClustersResponse> get(ListResourceClusterRequest request) {
@@ -85,9 +76,10 @@ public class ResourceClusterRouteHandlerAkkaImpl implements ResourceClusterRoute
     }
 
     @Override
-    // TODO tbi
-    public CompletionStage<DisableJobClusterResponse> disable(
-            DisableJobClusterRequest request) {
-        return null;
+    public CompletionStage<ScaleResourceResponse> scale(ScaleResourceRequest request) {
+        CompletionStage<ScaleResourceResponse> response =
+                ask(this.resourceClustersManagerActor, request, timeout)
+                        .thenApply(ScaleResourceResponse.class::cast);
+        return response;
     }
 }

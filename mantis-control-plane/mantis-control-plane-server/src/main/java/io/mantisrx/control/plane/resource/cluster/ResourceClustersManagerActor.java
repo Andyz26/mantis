@@ -23,6 +23,8 @@ import akka.japi.pf.ReceiveBuilder;
 import io.mantisrx.control.plane.resource.cluster.proto.GetResourceClusterSpecRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ListResourceClusterRequest;
 import io.mantisrx.control.plane.resource.cluster.proto.ProvisionResourceClusterRequest;
+import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.GetResourceClusterResponse;
+import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.ListResourceClustersResponse;
 import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterProvisionSubmissiomResponse;
 import io.mantisrx.control.plane.resource.cluster.proto.ScaleResourceRequest;
 import io.mantisrx.control.plane.resource.cluster.resourceprovider.IResourceClusterProvider;
@@ -30,8 +32,6 @@ import io.mantisrx.control.plane.resource.cluster.resourceprovider.IResourceStor
 import io.mantisrx.control.plane.resource.cluster.resourceprovider.InMemoryOnlyResourceStorageProvider;
 import io.mantisrx.control.plane.resource.cluster.writable.ResourceClusterSpecWritable;
 import io.mantisrx.master.jobcluster.proto.BaseResponse.ResponseCode;
-import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.GetResourceClusterResponse;
-import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.ListResourceClustersResponse;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -168,21 +168,12 @@ public class ResourceClustersManagerActor extends AbstractActorWithTimers {
                         .exceptionally(err -> ResourceClusterProvisionSubmissiomResponse.builder().error(err).build());
         pipe(provisionFut, getContext().dispatcher()).to(getSelf());
 
-        //        pipe(this.resourceClusterProvider.provisionClusterIfNotPresent(req)
-        //                        .exceptionally(err -> ResourceClusterProvisionResponse.builder().response(err.toString()).build()),
-        //                getContext().dispatcher())
-        //                .to(getSelf());
         log.trace("[Pipe finish 2]: returned provision fut.");
     }
 
     private void onScaleResourceClusterRequest(ScaleResourceRequest req) {
         log.info("Entering onScaleResourceClusterRequest: " + req);
-        pipe(this.resourceClusterProvider.scaleResource(req)
-                        .thenApply(res ->
-                        {
-                            log.info("onScaleResourceClusterRequest res: " + res);
-                            return res;
-                        }),
+        pipe(this.resourceClusterProvider.scaleResource(req),
                 getContext().dispatcher())
                 .to(getSender());
     }

@@ -26,7 +26,6 @@ import static org.mockito.Mockito.when;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
-import akka.actor.Status;
 import akka.testkit.javadsl.TestKit;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
@@ -35,12 +34,13 @@ import io.mantisrx.control.plane.resource.cluster.proto.ListResourceClusterReque
 import io.mantisrx.control.plane.resource.cluster.proto.MantisResourceClusterEnvType;
 import io.mantisrx.control.plane.resource.cluster.proto.MantisResourceClusterSpec;
 import io.mantisrx.control.plane.resource.cluster.proto.ProvisionResourceClusterRequest;
+import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.GetResourceClusterResponse;
+import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterAPIProto.ListResourceClustersResponse;
 import io.mantisrx.control.plane.resource.cluster.proto.ResourceClusterProvisionSubmissiomResponse;
 import io.mantisrx.control.plane.resource.cluster.resourceprovider.IResourceClusterProvider;
 import io.mantisrx.control.plane.resource.cluster.resourceprovider.IResourceClusterResponseHandler;
 import io.mantisrx.control.plane.resource.cluster.resourceprovider.IResourceStorageProvider;
-import io.mantisrx.control.plane.resource.cluster.writable.RegisteredResourceClustersWritable;
-import io.mantisrx.control.plane.resource.cluster.writable.ResourceClusterSpecWritable;
+import io.mantisrx.master.jobcluster.proto.BaseResponse.ResponseCode;
 import java.util.concurrent.CompletableFuture;
 import lombok.val;
 import org.junit.AfterClass;
@@ -86,20 +86,20 @@ public class ResourceClusterManagerActorTests {
         ProvisionResourceClusterRequest request = buildProvisionRequest();
 
         resourceClusterActor.tell(request, probe.getRef());
-        ResourceClusterSpecWritable createResp = probe.expectMsgClass(ResourceClusterSpecWritable.class);
+        GetResourceClusterResponse createResp = probe.expectMsgClass(GetResourceClusterResponse.class);
 
         assertEquals(request.getClusterSpec(), createResp.getClusterSpec());
 
         ListResourceClusterRequest listReq = ListResourceClusterRequest.builder().build();
         resourceClusterActor.tell(listReq, probe.getRef());
-        RegisteredResourceClustersWritable listResp = probe.expectMsgClass(RegisteredResourceClustersWritable.class);
-        assertEquals(1, listResp.getClusters().size());
-        assertEquals(request.getClusterId(), listResp.getClusters().get(request.getClusterId()).getClusterId());
+        ListResourceClustersResponse listResp = probe.expectMsgClass(ListResourceClustersResponse.class);
+        assertEquals(1, listResp.getRegisteredResourceClusters().size());
+        assertEquals(request.getClusterId(), listResp.getRegisteredResourceClusters().get(0).getId());
 
         GetResourceClusterSpecRequest getReq =
                 GetResourceClusterSpecRequest.builder().id(request.getClusterId()).build();
         resourceClusterActor.tell(getReq, probe.getRef());
-        ResourceClusterSpecWritable getResp = probe.expectMsgClass(ResourceClusterSpecWritable.class);
+        GetResourceClusterResponse getResp = probe.expectMsgClass(GetResourceClusterResponse.class);
         assertEquals(request.getClusterSpec(), getResp.getClusterSpec());
 
         // verify access API
@@ -110,20 +110,21 @@ public class ResourceClusterManagerActorTests {
         ProvisionResourceClusterRequest request2 = buildProvisionRequest("clsuter2", "dev2@mantisrx.io");
 
         resourceClusterActor.tell(request2, probe.getRef());
-        ResourceClusterSpecWritable createResp2 = probe.expectMsgClass(ResourceClusterSpecWritable.class);
+        GetResourceClusterResponse createResp2 = probe.expectMsgClass(GetResourceClusterResponse.class);
 
         assertEquals(request2.getClusterSpec(), createResp2.getClusterSpec());
 
         ListResourceClusterRequest listReq2 = ListResourceClusterRequest.builder().build();
         resourceClusterActor.tell(listReq2, probe.getRef());
-        RegisteredResourceClustersWritable listResp2 = probe.expectMsgClass(RegisteredResourceClustersWritable.class);
-        assertEquals(2, listResp2.getClusters().size());
-        assertEquals(request2.getClusterId(), listResp2.getClusters().get(request2.getClusterId()).getClusterId());
+        ListResourceClustersResponse listResp2 = probe.expectMsgClass(ListResourceClustersResponse.class);
+        assertEquals(2, listResp2.getRegisteredResourceClusters().size());
+        assertEquals(1,
+                listResp2.getRegisteredResourceClusters().stream().filter(e -> e.getId().equals(request2.getClusterId())).count());
 
         GetResourceClusterSpecRequest getReq2 =
                 GetResourceClusterSpecRequest.builder().id(request2.getClusterId()).build();
         resourceClusterActor.tell(getReq2, probe.getRef());
-        ResourceClusterSpecWritable getResp2 = probe.expectMsgClass(ResourceClusterSpecWritable.class);
+        GetResourceClusterResponse getResp2 = probe.expectMsgClass(GetResourceClusterResponse.class);
         assertEquals(request2.getClusterSpec(), getResp2.getClusterSpec());
 
         // verify access API
@@ -159,13 +160,13 @@ public class ResourceClusterManagerActorTests {
         ProvisionResourceClusterRequest request = buildProvisionRequest();
 
         resourceClusterActor.tell(request, probe.getRef());
-        Status.Failure createResp = probe.expectMsgClass(Status.Failure.class);// ResourceClusterSpecWritable.class);
+        GetResourceClusterResponse createResp = probe.expectMsgClass(GetResourceClusterResponse.class);// ResourceClusterSpecWritable.class);
 
-        assertEquals(err, createResp.cause().getCause());
+        assertEquals(ResponseCode.SERVER_ERROR, createResp.responseCode);
 
         verify(resProvider, times(0)).provisionClusterIfNotPresent(any());
         verify(responseHandler, times(1)).handleProvisionResponse(
-                argThat(ar -> ar.getError().getCause().equals(err)));
+                argThat(ar -> ar.getResponse().equals(err.toString())));
 
         probe.getSystem().stop(resourceClusterActor);
     }
@@ -188,20 +189,20 @@ public class ResourceClusterManagerActorTests {
         ProvisionResourceClusterRequest request = buildProvisionRequest();
 
         resourceClusterActor.tell(request, probe.getRef());
-        ResourceClusterSpecWritable createResp = probe.expectMsgClass(ResourceClusterSpecWritable.class);
+        GetResourceClusterResponse createResp = probe.expectMsgClass(GetResourceClusterResponse.class);
 
         assertEquals(request.getClusterSpec(), createResp.getClusterSpec());
 
         ListResourceClusterRequest listReq = ListResourceClusterRequest.builder().build();
         resourceClusterActor.tell(listReq, probe.getRef());
-        RegisteredResourceClustersWritable listResp = probe.expectMsgClass(RegisteredResourceClustersWritable.class);
-        assertEquals(1, listResp.getClusters().size());
-        assertEquals(request.getClusterId(), listResp.getClusters().get(request.getClusterId()).getClusterId());
+        ListResourceClustersResponse listResp = probe.expectMsgClass(ListResourceClustersResponse.class);
+        assertEquals(1, listResp.getRegisteredResourceClusters().size());
+        assertEquals(request.getClusterId(), listResp.getRegisteredResourceClusters().get(0).getId());
 
         GetResourceClusterSpecRequest getReq =
                 GetResourceClusterSpecRequest.builder().id(request.getClusterId()).build();
         resourceClusterActor.tell(getReq, probe.getRef());
-        ResourceClusterSpecWritable getResp = probe.expectMsgClass(ResourceClusterSpecWritable.class);
+        GetResourceClusterResponse getResp = probe.expectMsgClass(GetResourceClusterResponse .class);
         assertEquals(request.getClusterSpec(), getResp.getClusterSpec());
 
         verify(resProvider).provisionClusterIfNotPresent(request);

@@ -154,7 +154,7 @@ public class SimpleFileResourceStorageProvider implements IResourceStorageProvid
                 .via(Flow.of(ResourceClusterSpecWritable.class)
                         .alsoTo((Sink.foreach(c -> logger.info(("Got cluster spec: " + c))))))
                 .runWith(Sink.last(), Materializer.createMaterializer(system))
-                .exceptionally(e -> { throw new RuntimeException("Failed to retrieve clsuter spec: " + clusterId); });
+                .exceptionally(e -> { throw new RuntimeException("Failed to retrieve clsuter spec: " + clusterId, e); });
     }
 
     private Path getClusterSpecFilePath(String dirName, String clusterId) {

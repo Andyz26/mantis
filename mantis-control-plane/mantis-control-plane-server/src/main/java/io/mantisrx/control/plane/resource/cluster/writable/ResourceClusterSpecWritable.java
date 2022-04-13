@@ -17,11 +17,12 @@
 package io.mantisrx.control.plane.resource.cluster.writable;
 
 import io.mantisrx.control.plane.resource.cluster.proto.MantisResourceClusterSpec;
+import io.mantisrx.shaded.com.fasterxml.jackson.annotation.JsonCreator;
+import io.mantisrx.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Value;
 
-// @Jacksonized TODO fix Jacksonized
 @Value
 @Builder
 public class ResourceClusterSpecWritable {
@@ -33,4 +34,14 @@ public class ResourceClusterSpecWritable {
 
     @NonNull
     MantisResourceClusterSpec clusterSpec;
+
+    @JsonCreator
+    public ResourceClusterSpecWritable(
+            @JsonProperty("version") final String version,
+            @JsonProperty("id") final String id,
+            @JsonProperty("clusterSpec") final MantisResourceClusterSpec clusterSpec) {
+        this.version = version;
+        this.id = id;
+        this.clusterSpec = clusterSpec;
+    }
 }

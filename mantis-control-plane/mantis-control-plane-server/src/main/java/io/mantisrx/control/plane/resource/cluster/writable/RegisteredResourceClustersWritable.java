@@ -16,20 +16,26 @@
 
 package io.mantisrx.control.plane.resource.cluster.writable;
 
+import io.mantisrx.shaded.com.fasterxml.jackson.annotation.JsonCreator;
+import io.mantisrx.shaded.com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 import lombok.Builder;
 import lombok.NonNull;
 import lombok.Singular;
 import lombok.Value;
 
-// @Jacksonized TODO fix Jacksonized
 @Value
 @Builder(toBuilder = true)
 public class RegisteredResourceClustersWritable {
     @Singular
     Map<String, ClusterRegistration> clusters;
 
-    // @Jacksonized TODO fix Jacksonized
+    @JsonCreator
+    public RegisteredResourceClustersWritable(
+            @JsonProperty("clusters") final Map<String, ClusterRegistration> clusters) {
+        this.clusters = clusters;
+    }
+
     @Value
     @Builder
     public static class ClusterRegistration {
@@ -37,5 +43,13 @@ public class RegisteredResourceClustersWritable {
         String clusterId;
 
         String version;
+
+        @JsonCreator
+        public ClusterRegistration(
+                @JsonProperty("clusterId") final String clusterId,
+                @JsonProperty("version") final String version) {
+            this.clusterId = clusterId;
+            this.version = version;
+        }
     }
 }

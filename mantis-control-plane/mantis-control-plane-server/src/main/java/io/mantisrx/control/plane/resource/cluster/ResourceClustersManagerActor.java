@@ -32,6 +32,7 @@ import io.mantisrx.control.plane.resource.cluster.resourceprovider.IResourceStor
 import io.mantisrx.control.plane.resource.cluster.resourceprovider.InMemoryOnlyResourceStorageProvider;
 import io.mantisrx.control.plane.resource.cluster.writable.ResourceClusterSpecWritable;
 import io.mantisrx.master.jobcluster.proto.BaseResponse.ResponseCode;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -164,7 +165,13 @@ public class ResourceClustersManagerActor extends AbstractActorWithTimers {
         // Provision response is directed back to this actor to handle its submission result.
         CompletionStage<ResourceClusterProvisionSubmissiomResponse> provisionFut =
                 updateSpecToStoreFut
-                        .thenCompose(spec -> this.resourceClusterProvider.provisionClusterIfNotPresent(req))
+                        .thenCompose(resp -> {
+                            if (resp.responseCode.equals(ResponseCode.SUCCESS)) {
+                                return this.resourceClusterProvider.provisionClusterIfNotPresent(req);
+                            }
+                            return CompletableFuture.completedFuture(
+                                ResourceClusterProvisionSubmissiomResponse.builder().response(resp.message).build());
+                        })
                         .exceptionally(err -> ResourceClusterProvisionSubmissiomResponse.builder().error(err).build());
         pipe(provisionFut, getContext().dispatcher()).to(getSelf());
 
